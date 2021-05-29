@@ -23,19 +23,20 @@ func TestCTS(t *testing.T) {
 		iv[i] = byte(i * 2)
 	}
 
-	// prepare aligned data
-	hexstr := "0123456789abcdef"
-	dataAligned := make([]byte, 4*aes.BlockSize)
-	for i, j := 0, 0; i < len(dataAligned); i++ {
-		dataAligned[i] = hexstr[j]
-		j = (j + 1) % len(hexstr)
+	prepare := func(buf []byte) {
+		hexstr := "0123456789abcdef"
+		for i, j := 0, 0; i < len(buf); i++ {
+			buf[i] = hexstr[j]
+			j = (j + 1) % len(hexstr)
+		}
 	}
+
+	// prepare aligned data
+	dataAligned := make([]byte, 4*aes.BlockSize)
+	prepare(dataAligned)
 	// prepare unaligned data
 	dataUnaligned := make([]byte, 4*aes.BlockSize+3)
-	for i, j := 0, 0; i < len(dataUnaligned); i++ {
-		dataUnaligned[i] = hexstr[j]
-		j = (j + 1) % len(hexstr)
-	}
+	prepare(dataUnaligned)
 
 	ac, err := aes.NewCipher(key)
 

@@ -107,20 +107,29 @@ func (cd *cbccts) encode(dst, src []byte) {
 	padding := blocksz - leftover
 	buflen := textlen + padding
 	py, pz := buflen-2*blocksz, buflen-blocksz
-	tmp := make([]byte, buflen)
-	copy(tmp[:textlen], src)
+
+	if py < 0 {
+		// data smaller than a block
+		panic(fmt.Errorf("data size too small; must be larger than one block"))
+	}
+
+	// encrypt aligned blocks
+	cd.codec.CryptBlocks(dst[:py], src[:py])
+
+	// process last two blocks
+	tmp := make([]byte, 2*blocksz)
+	copy(tmp[:blocksz+leftover], src[py:])
 	cd.codec.CryptBlocks(tmp, tmp)
 
 	switch cd.mode {
 	case CS1:
-		// retain the block order: partial blck / full block
-		copy(dst[:py+leftover], tmp[:py+leftover]) // copy partial block
-		copy(dst[py+leftover:], tmp[pz:])          // copy full block
+		// retain the block order: partial blck precedes full block
+		copy(dst[py:py+leftover], tmp[:leftover]) // copy partial block
+		copy(dst[py+leftover:], tmp[blocksz:])    // copy full block
 	case CS2, CS3:
 		// swap last two blocks and make the full block precedes the partial block
-		copy(dst[:py], tmp[:py])
-		copy(dst[py:pz], tmp[pz:])          // copy the last full block
-		copy(dst[pz:], tmp[py:py+leftover]) // copy partial block
+		copy(dst[py:pz], tmp[blocksz:]) // copy the last full block
+		copy(dst[pz:], tmp[:leftover])  // copy partial block
 	}
 }
 
@@ -156,33 +165,40 @@ func (cd *cbccts) decode(dst, src []byte) {
 	padding := blocksz - leftover
 	buflen := textlen + padding
 	py, pz := buflen-2*blocksz, buflen-blocksz
-	tmp := make([]byte, buflen)
+
+	if py < 0 { // data smaller than a block
+		panic(fmt.Errorf("data size too small; must be larger than one block"))
+	}
+
+	// encrypt aligned blocks
+	cd.codec.CryptBlocks(dst[:py], src[:py])
+
+	tmp := make([]byte, 2*blocksz)
 
 	switch cd.mode {
 	case CS1:
 		// in mode CS1, the partial block precedes a full block
-		copy(tmp[:textlen-blocksz], src[:textlen-blocksz])
+		copy(tmp[:leftover], src[py:py+leftover])
 		// there are paddings between the partial block and the last full block
-		copy(tmp[pz:], src[textlen-blocksz:])
+		copy(tmp[blocksz:], src[py+leftover:])
 	case CS2, CS3:
 		// in mode CS2(not aligned in block) and CS3, a full block procedes the partial block
-		copy(tmp[:py], src[:py])
-		copy(tmp[py:py+leftover], src[pz:]) // move the partial block to [last-1] block
-		copy(tmp[pz:], src[py:pz])          // move the full block to the last
+		copy(tmp[:leftover], src[pz:])  // move the partial block to [last-1] block
+		copy(tmp[blocksz:], src[py:pz]) // move the full block to the last
 	default:
 		panic(fmt.Errorf("invalid mode"))
 	}
 
 	// decrypt the last full block, in ECB mode
 	D := make([]byte, blocksz)
-	cd.block.Decrypt(D, tmp[pz:])
+	cd.block.Decrypt(D, tmp[blocksz:])
 
 	// Overlay the decrypted portion with the partial block
 	for i := leftover; i < blocksz; i++ {
-		tmp[py+i] = D[i]
+		tmp[i] = D[i]
 	}
 
 	// run the decrypter
 	cd.codec.CryptBlocks(tmp, tmp)
-	copy(dst, tmp[:textlen])
+	copy(dst[py:], tmp)
 }
