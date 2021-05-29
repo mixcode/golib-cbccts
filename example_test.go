@@ -1,20 +1,15 @@
-# cbccts : A CBC encrypter/decrypter in CTS mode
-
-Go Package cbccts is a block cipher CBC encrypter/decrypter in Ciphertext stealing (CTS) mode.
-CTS is a mode to handle arbitrary-length data. In other words, CTS can handle data not aligned to a block boundary.
-
-The encoder/decoder is compatible with Go standard cipher package's cipher.BlockMode interface.
-
-See https://en.wikipedia.org/wiki/Ciphertext_stealing for info.
-
-
-## Example
-
-```Go
+package cbccts_test
 
 import (
-    "crypto/aes"
-    "github.com/mixcode/golib/cbccts"
+	"bytes"
+	"crypto/aes"
+	"fmt"
+
+	"github.com/mixcode/golib/cbccts"
+)
+
+var (
+	key, iv, data []byte
 )
 
 func Example() {
@@ -35,7 +30,27 @@ func Example() {
 	decoded := make([]byte, len(data))
 	// run the decrypter
 	modeDec.CryptBlocks(decoded, encoded)
+
+	// compare results
+	fmt.Println(bytes.Equal(data, decoded))
+
+	// Output:
+	// true
 }
 
-```
+func init() {
+	key = make([]byte, 0x20) // AES-256
+	for i := 0; i < len(key); i++ {
+		key[i] = byte(i)
+	}
 
+	iv = make([]byte, aes.BlockSize)
+	for i := 0; i < len(iv); i++ {
+		iv[i] = byte(i * 2)
+	}
+
+	data = make([]byte, 0x54) // random size
+	for i := 0; i < len(data); i++ {
+		data[i] = byte(i * 7)
+	}
+}
