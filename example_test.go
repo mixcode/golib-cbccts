@@ -5,7 +5,7 @@ import (
 	"crypto/aes"
 	"fmt"
 
-	"github.com/mixcode/golib/cbccts"
+	"github.com/mixcode/golib-cbccts"
 )
 
 var (

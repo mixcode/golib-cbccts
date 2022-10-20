@@ -6,7 +6,7 @@ import (
 	"crypto/cipher"
 	"testing"
 
-	"github.com/mixcode/golib/cbccts"
+	"github.com/mixcode/golib-cbccts"
 )
 
 func TestCTS(t *testing.T) {

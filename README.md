@@ -14,7 +14,7 @@ See https://en.wikipedia.org/wiki/Ciphertext_stealing for info.
 
 import (
     "crypto/aes"
-    "github.com/mixcode/golib/cbccts"
+    "github.com/mixcode/golib-cbccts"
 )
 
 func Example() {
